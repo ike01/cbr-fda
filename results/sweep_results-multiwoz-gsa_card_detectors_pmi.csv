@@ -1,5 +1,0 @@
-run,reuse,affinity,stopping,detector,node_f1,edge_f1,avg_neighbours_used,int_node_f1,coverage,status,error
-2,gsa_card,pmi,detector,CAI,0.3298571428571428,0.11085714285714285,1.0,0.3298571428571428,1.0,ok,
-1,gsa_card,pmi,detector,NCFD,0.3298571428571428,0.11085714285714285,1.0,0.3298571428571428,1.0,ok,
-3,gsa_card,pmi,detector,EMND,0.3518571428571428,0.11085714285714285,1.06,0.3298571428571428,1.0,ok,
-4,gsa_card,pmi,detector,NTAD,0.37249206349206354,0.048,3.14,0.37249206349206354,1.0,ok,

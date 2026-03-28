@@ -1,4 +1,0 @@
-run,reuse,affinity,stopping,detector,node_f1,edge_f1,avg_neighbours_used,int_node_f1,coverage,status,error
-2,llm_fewshot,condprob,detector,NTAD,0.022777777777777775,0.0,0.0,0.31211111111111106,1.0,ok,
-1,llm_zero,condprob,detector,NTAD,0.15511038961038962,0.017333333333333333,0.0,0.32405760905760905,1.0,ok,
-3,llm_rag,condprob,detector,NTAD,0.3556776556776557,0.05777777777777777,0.0,0.369010989010989,1.0,ok,

@@ -92,7 +92,7 @@ class Config:
     cbr_holdout_ids_path: Optional[str] = "results/cbr_holdout_total250_test50_seed42_strat.json" # None
     # Ollama LLM baselines
     ollama_host: str = "http://localhost:11434"
-    ollama_model: str = "llama3.1:8b"
+    ollama_model: str = "llama3.1:8b"  # "llama3:8b", "llama3.1:8b", "gemma3:12b"
     ollama_timeout_s: int = 120
     llm_temperature: float = 0.0
     llm_max_tokens: int = 512
@@ -1845,6 +1845,8 @@ def _execute_sweep_run(run_idx: int, cfg: Config) -> Dict[str, object]:
 
 
 if __name__ == "__main__":
+    multiwoz_case_base_seed = 45  # fixed seed for reproducible case base sampling across runs
+
     cfg = Config(
         multiwoz_root="./MultiWOZ_2.2",
         retriever="sbert",      # falls back to tfidf if sentence-transformers is unavailable
@@ -1866,41 +1868,31 @@ if __name__ == "__main__":
         detector_thresholds=None,  #{"NCFD": 0.12, "CAI": 0.12, "EMND": 0.35, "NTAD": 0.60, "ASFD": 0.65},
         enable_asfd=False,
         # Reproducible small case-base setup examples:
-        case_base_size=550,
-        case_base_seed=42,
+        case_base_size=250,
+        case_base_seed=multiwoz_case_base_seed,
         case_base_stratified=True,
-        case_base_ids_path="results/casebase_ids_n550_seed42_strat.json",
+        case_base_ids_path=f"results/multiwoz_casebase_ids_n250_seed{multiwoz_case_base_seed}_strat.json",
         # CBR internal tuning mode (no val/dev usage):
         cbr_mode=True,
         cv_folds=5,
         tune_lambda_on_cv=True,
         cbr_holdout_test_size=50,
-        cbr_holdout_ids_path="results/cbr_holdout_total550_test50_seed42_strat.json",
+        cbr_holdout_ids_path=f"results/multiwoz_cbr_holdout_total250_test50_seed{multiwoz_case_base_seed}_strat.json",
     )
 
     # Toggle this to run a full options sweep instead of a single config.
     RUN_SWEEP = True
     SWEEP_SKIP_FIRST_RUNS = 0  # set >0 to skip this many runs when restarting
     if RUN_SWEEP:
-        # run_option_sweep(
-        #     base_cfg=cfg,
-        #     affinity_methods=["embedding_cosine", "condprob", "pmi"],
-        #     stopping_modes=["alpha", "detector", "hybrid"],
-        #     stopping_detectors=["NCFD", "CAI", "EMND", "NTAD"],
-        #     reuse_methods=["bm", "gsa", "nda", "gsa_card"],
-        #     results_path="results/sweep_results.csv",
-        #     max_workers=3,
-        # )
         run_option_sweep(
             base_cfg=cfg,
             affinity_methods= ["condprob"],  #["embedding_cosine", "condprob", "pmi"],
             stopping_modes= ["detector"],  #["alpha", "detector", "hybrid"],
             stopping_detectors= ["NTAD"],  #["NCFD", "CAI", "EMND", "NTAD"],
-            reuse_methods= ["llm_zero", "llm_fewshot", "llm_rag"],  #["bm","gsa", "nda", "gsa_card"],
-            results_path="results/500-sweep_results-multiwoz-all_detectors_condprob_2.csv",
+            reuse_methods= ["bm","gsa", "nda", "gsa_card", "llm_zero", "llm_fewshot", "llm_rag"],  #["bm","gsa", "nda", "gsa_card", "llm_zero", "llm_fewshot", "llm_rag"],
+            results_path=f"results/sweep_results-multiwoz-all_detectors_condprob_seed{multiwoz_case_base_seed}.csv",
             max_workers=2,
             skip_first_runs=SWEEP_SKIP_FIRST_RUNS,
         )
     else:
         main(cfg)
-

@@ -1,8 +1,0 @@
-run,reuse,affinity,stopping,detector,node_f1,edge_f1,avg_neighbours_used,int_node_f1,coverage,status,error
-1,bm,condprob,detector,NTAD,0.306510823,0.065111111,1,0.306510823,1,ok,
-2,gsa,condprob,detector,NTAD,0.311428571,0.091666667,3.02,0.311428571,1,ok,
-3,nda,condprob,detector,NTAD,0.311428571,0.091666667,3.02,0.311428571,1,ok,
-4,gsa_card,condprob,detector,NTAD,0.326380952,0.031666667,3.46,0.316380952,1,ok,
-6,llm_fewshot,condprob,detector,NTAD,0.084693529,0.008,0,0.286510823,1,ok,
-5,llm_zero,condprob,detector,NTAD,0.20404329,0.003636364,0,0.295111555,1,ok,
-7,llm_rag,condprob,detector,NTAD,0.26081241,0.068444444,0,0.266082251,1,ok,

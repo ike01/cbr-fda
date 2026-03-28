@@ -19,11 +19,11 @@ logger = logging.getLogger("run_onet")
 @dataclass
 class ONetSplitConfig:
     dataset_path: str = "./onet_data/dataset_tasks_to_skills.json"
-    train_size: int = 100
-    test_size: int = 50
+    train_size: int = 250
+    test_size: int = 0
     split_seed: int = 42
     stratified: bool = True
-    split_ids_path: Optional[str] = "results/onet_split_train100_test50_seed42.json"
+    split_ids_path: Optional[str] = None
     lowercase: bool = True
     dedupe_lists: bool = True
 
@@ -51,13 +51,23 @@ def _load_or_create_split(split_cfg: ONetSplitConfig):
             return train_cases, test_cases
         logger.warning("Existing split file is incomplete/mismatched; regenerating split.")
 
-    train_cases, test_cases = split_cases(
-        all_cases,
-        train_size=split_cfg.train_size,
-        test_size=split_cfg.test_size,
-        seed=split_cfg.split_seed,
-        stratified=split_cfg.stratified,
-    )
+    if split_cfg.test_size == 0:
+        train_cases, _ = split_cases(
+            all_cases,
+            train_size=split_cfg.train_size,
+            test_size=1,
+            seed=split_cfg.split_seed,
+            stratified=split_cfg.stratified,
+        )
+        test_cases = []
+    else:
+        train_cases, test_cases = split_cases(
+            all_cases,
+            train_size=split_cfg.train_size,
+            test_size=split_cfg.test_size,
+            seed=split_cfg.split_seed,
+            stratified=split_cfg.stratified,
+        )
     logger.info(
         "Created O*NET split train=%d test=%d from total=%d",
         len(train_cases), len(test_cases), len(all_cases),
@@ -169,13 +179,16 @@ def run_onet_option_sweep(
 
 
 if __name__ == "__main__":
+    onet_split_seed = 45  # fixed seed for reproducible train/test split of O*NET dataset; separate from case base sampling seed
+    onet_case_base_seed = onet_split_seed  # fixed seed for reproducible case base sampling from the training portion of O*NET dataset; separate from train/test split seed
+
     split_cfg = ONetSplitConfig(
         dataset_path="./onet_data/dataset_tasks_to_skills.json",
-        train_size=100,
-        test_size=50,
-        split_seed=42,
+        train_size=250,
+        test_size=0,
+        split_seed=onet_split_seed,
         stratified=True,
-        split_ids_path="results/onet_split_train100_test50_seed42.json",
+        split_ids_path=f"results/onet_split_train250_test0_seed{onet_split_seed}.json",
     )
 
     cfg = Config(
@@ -195,10 +208,12 @@ if __name__ == "__main__":
         prompt_style="onet",
         tune_alpha_on_val=True,
         # Keep O*NET runner simple: fixed split from onet dataset, no extra internal split here.
-        case_base_size=388,
+        case_base_size=250,
+        case_base_seed=onet_case_base_seed,
+        case_base_ids_path=f"results/onet_casebase_ids_n250_seed{onet_case_base_seed}_strat.json",
         cbr_mode=True,
-        cbr_holdout_test_size=None,
-        cbr_holdout_ids_path=None,
+        cbr_holdout_test_size=50,
+        cbr_holdout_ids_path=f"results/onet_cbr_holdout_total250_test50_seed{onet_case_base_seed}_strat.json",
         integrate_detector=True,
         threshold_mode="val_tune",   # "fixed" | "percentile" | "val_tune"
         detector_thresholds=None,
@@ -213,7 +228,7 @@ if __name__ == "__main__":
             stopping_modes=["detector"],
             stopping_detectors=["NTAD"],
             reuse_methods=["bm", "gsa", "nda", "gsa_card", "llm_zero", "llm_fewshot", "llm_rag"],
-            results_path="results/100-sweep_results-onet-all_detectors_condprob.csv",
+            results_path=f"results/sweep_results-onet-all_detectors_condprob_seed{onet_split_seed}.csv",
         )
     else:
         run_single(cfg, split_cfg)

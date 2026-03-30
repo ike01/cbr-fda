@@ -37,6 +37,21 @@ logging.basicConfig(
 logger = logging.getLogger("run")
 
 
+def _canonical_reuse_method(name: str) -> str:
+    # Backward-compatible alias for the paper-aligned method name.
+    return "carm" if name == "gsa_card" else name
+
+
+def _canonical_detector_name(name: str) -> str:
+    # Backward-compatible aliases for paper-aligned detector labels.
+    aliases = {
+        "NCFD": "NCD",
+        "CAI": "WNCD",
+        "EMND": "END",
+    }
+    return aliases.get(name, name)
+
+
 @dataclass
 class Config:
     multiwoz_root: str
@@ -56,8 +71,8 @@ class Config:
     max_pred_actions: int = 12        # cap predicted actions
     debug_trace: bool = False         # print matching/merge trace for first N examples
     debug_first_n: int = 5            # number of test cases to trace
-    reuse_method: str = "gsa"         # "bm", "gsa", "nda", "gsa_card", "llm_zero", "llm_fewshot", "llm_rag"
-    lambda_complexity: float = 0.10   # cardinality penalty used by gsa_card
+    reuse_method: str = "gsa"         # "bm", "gsa", "nda", "carm", "llm_zero", "llm_fewshot", "llm_rag"
+    lambda_complexity: float = 0.10   # cardinality penalty used by carm
 
     # Failure detection evaluation
     low_quality_cut: float = 0.2      # "true failure" if node-F1 < this
@@ -73,7 +88,7 @@ class Config:
     # Integrating failure detection
     integrate_detector: bool = True
     integration_mode: str = "fallback_bm"   # "fallback_bm" or "selective"
-    integration_detector: str = "NTAD"      # "NCFD", "CAI", "EMND", "NTAD" (ASFD if enabled)
+    integration_detector: str = "NTAD"      # "NCD", "WNCD", "END", "NTAD" (ASFD if enabled)
     # Reproducible case-base sampling
     case_base_size: Optional[int] = 250    # e.g., 100 or 200; None uses full train set
     case_base_seed: int = 42
@@ -406,7 +421,7 @@ def _make_casebase_cv_folds(cases: List[Case], n_folds: int, seed: int) -> List[
 
 def tune_hparams_on_casebase_cv(cfg: Config, train_cases: List[Case]) -> Tuple[float, float]:
     """
-    Tune alpha (+ lambda for gsa_card) with K-fold CV on the case base.
+    Tune alpha (+ lambda for carm) with K-fold CV on the case base.
     Returns (best_alpha, best_lambda).
     """
     cases = sorted(train_cases, key=lambda c: c.case_id)
@@ -418,7 +433,7 @@ def tune_hparams_on_casebase_cv(cfg: Config, train_cases: List[Case]) -> Tuple[f
         return float(cfg.alpha), float(cfg.lambda_complexity)
 
     alpha_grid = cfg.alpha_grid if cfg.alpha_grid is not None else [round(x, 2) for x in np.arange(0.20, 0.71, 0.05)]
-    if cfg.reuse_method == "gsa_card" and cfg.tune_lambda_on_cv:
+    if _canonical_reuse_method(cfg.reuse_method) == "carm" and cfg.tune_lambda_on_cv:
         lambda_grid = cfg.lambda_grid if cfg.lambda_grid is not None else [0.00, 0.05, 0.10, 0.20, 0.40]
     else:
         lambda_grid = [float(cfg.lambda_complexity)]
@@ -548,6 +563,8 @@ def stable_matching_reuse_with_graph_merge(
       - hybrid: stop when both conditions hold
     Then graph-merge matched actions into a predicted SolutionGraph.
     """
+    match_method = _canonical_reuse_method(match_method)
+
     if not retrieved:
         return build_action_sequence_graph([]), {"final_score": 0.0, "pairs": {}}
 
@@ -574,13 +591,13 @@ def stable_matching_reuse_with_graph_merge(
                 matched_actions.append(a)
         seed_order = {a: i for i, a in enumerate(matched_actions)}
 
-        if match_method != "gsa_card":
+        if match_method != "carm":
             if len(matched_actions) < 1:
                 # Fallback if no pair survives matching.
                 matched_actions = case_base[retrieved[0].idx].solution_actions[:max_pred_actions]
             return matched_actions[:max_pred_actions]
 
-        # gsa_card: stable matching provides seeds, then post-matching
+        # carm: stable matching provides seeds, then post-matching
         # cardinality is selected by a quality-complexity objective.
         n_needs, m_actions = sim_mat.shape
         action_sim = np.zeros(m_actions, dtype=np.float32)
@@ -661,7 +678,7 @@ def stable_matching_reuse_with_graph_merge(
     for i in range(1, K + 1):
         pool_actions = collect_pool_actions(retrieved, case_base, upto_i=i, cap=max_pool_actions)
 
-        sm_method = "gsa" if match_method == "gsa_card" else match_method
+        sm_method = "gsa" if match_method == "carm" else match_method
         pairs, score, sim_mat = stable_match_needs_to_actions(
             query_case.needs,
             pool_actions,
@@ -683,7 +700,7 @@ def stable_matching_reuse_with_graph_merge(
                 candidate_quality = float(np.mean(vals))
 
         detector_score = None
-        should_stop_alpha = (candidate_quality >= alpha) if match_method == "gsa_card" else (score >= alpha)
+        should_stop_alpha = (candidate_quality >= alpha) if match_method == "carm" else (score >= alpha)
         should_stop_detector = False
         if stopping_mode in ("detector", "hybrid"):
             if stop_detector is None:
@@ -715,11 +732,11 @@ def stable_matching_reuse_with_graph_merge(
                 logger.info("  pair need='%s' -> action='%s' affinity=%.3f", need, act, s)
 
         rank_score = (
-            candidate_quality if match_method == "gsa_card" else score
+            candidate_quality if match_method == "carm" else score
         ) if stopping_mode in ("alpha", "hybrid") else float(detector_score or 0.0)
         if rank_score > best_rank_score:
             best_rank_score = rank_score
-            best_score = candidate_quality if match_method == "gsa_card" else score
+            best_score = candidate_quality if match_method == "carm" else score
             best_stop_score = float(detector_score or 0.0)
             best_pairs = pairs
             best_pool = pool_actions
@@ -742,7 +759,7 @@ def stable_matching_reuse_with_graph_merge(
         best_pool,
         sim_backend,
         debug=False,
-        method=("gsa" if match_method == "gsa_card" else match_method)
+        method=("gsa" if match_method == "carm" else match_method)
     )
     matched_actions = _matched_actions_from_pairs(best_pairs, best_pool, best_sim, retrieved[:best_i])
 
@@ -776,11 +793,12 @@ def resolve_stopping_detector(cfg: Config, detector_map: Dict[str, object]) -> O
     """
     if cfg.stopping_mode == "alpha":
         return None
-    if cfg.stopping_detector not in detector_map:
+    det_name = _canonical_detector_name(cfg.stopping_detector)
+    if det_name not in detector_map:
         raise RuntimeError(
             f"Unknown stopping_detector={cfg.stopping_detector}. Available: {list(detector_map.keys())}"
         )
-    return detector_map[cfg.stopping_detector]
+    return detector_map[det_name]
 
 
 def tune_alpha_on_validation(cfg: Config, val_cases: List[Case], train_cases: List[Case], retriever, sim_backend: TextSim) -> float:
@@ -1204,7 +1222,7 @@ def predict_graph_for_case(
         if detector_map is None:
             raise RuntimeError("detector_map is required when stopping_mode != 'alpha'.")
         stop_detector = resolve_stopping_detector(cfg, detector_map)
-        stop_threshold = float(cfg.detector_thresholds.get(cfg.stopping_detector, 0.0))
+        stop_threshold = float(cfg.detector_thresholds.get(_canonical_detector_name(cfg.stopping_detector), 0.0))
 
     return stable_matching_reuse_with_graph_merge(
         query_case=q,
@@ -1415,11 +1433,15 @@ def main(
     # Failure detectors
     # if cfg.detector_thresholds is None:
     #     # simple defaults; tune later via validation or percentiles
-    #     cfg.detector_thresholds = {"NCFD": 0.12, "CAI": 0.12, "EMND": 0.35, "NTAD": 0.60, "ASFD": 0.65}
+    #     cfg.detector_thresholds = {"NCD": 0.12, "WNCD": 0.12, "END": 0.35, "NTAD": 0.60, "ASFD": 0.65}
 
     # Threshold selection
     if cfg.detector_thresholds is None:
-        cfg.detector_thresholds = {"NCFD": 0.12, "CAI": 0.12, "EMND": 0.35, "NTAD": 0.60, "ASFD": 0.65}
+        cfg.detector_thresholds = {"NCD": 0.12, "WNCD": 0.12, "END": 0.35, "NTAD": 0.60, "ASFD": 0.65}
+    else:
+        cfg.detector_thresholds = {
+            _canonical_detector_name(k): float(v) for k, v in cfg.detector_thresholds.items()
+        }
 
     if cfg.threshold_mode == "fixed":
         logger.info("Threshold mode: fixed (user-provided or defaults)")
@@ -1515,7 +1537,7 @@ def main(
         integrated_abstained = False
 
         if cfg.integrate_detector:
-            det_name = cfg.integration_detector
+            det_name = _canonical_detector_name(cfg.integration_detector)
             thr = float(cfg.detector_thresholds.get(det_name, 0.0))
 
             # compute chosen detector score
@@ -1845,7 +1867,7 @@ def _execute_sweep_run(run_idx: int, cfg: Config) -> Dict[str, object]:
 
 
 if __name__ == "__main__":
-    multiwoz_case_base_seed = 45  # fixed seed for reproducible case base sampling across runs
+    multiwoz_case_base_seed = 46  # fixed seed for reproducible case base sampling across runs
 
     cfg = Config(
         multiwoz_root="./MultiWOZ_2.2",
@@ -1854,30 +1876,30 @@ if __name__ == "__main__":
         alpha=0.45,             # initial, will be overwritten if tuning enabled
         affinity_method="embedding_cosine",  # "embedding_cosine" | "condprob" | "pmi"
         stopping_mode="detector",  # "alpha" | "detector" | "hybrid"
-        stopping_detector="NTAD",  # "NCFD", "CAI", "EMND", "NTAD"
+        stopping_detector="NTAD",  # "NCD", "WNCD", "END", "NTAD"
         max_pool_actions=60,
         max_pred_actions=10,
         debug_trace=True,
         debug_first_n=3,
-        reuse_method="gsa_card",     # "bm", "gsa", "nda", "gsa_card", "llm_zero", "llm_fewshot", "llm_rag"
+        reuse_method="carm",         # "bm", "gsa", "nda", "carm", "llm_zero", "llm_fewshot", "llm_rag"
         lambda_complexity=0.05,
         tune_alpha_on_val=True,
         alpha_max_cases=1500,
         # alpha_grid=[0.25, 0.35, 0.45, 0.55],  # optional custom grid
         low_quality_cut=0.2,
-        detector_thresholds=None,  #{"NCFD": 0.12, "CAI": 0.12, "EMND": 0.35, "NTAD": 0.60, "ASFD": 0.65},
+        detector_thresholds=None,  #{"NCD": 0.12, "WNCD": 0.12, "END": 0.35, "NTAD": 0.60, "ASFD": 0.65},
         enable_asfd=False,
         # Reproducible small case-base setup examples:
-        case_base_size=250,
+        case_base_size=550,
         case_base_seed=multiwoz_case_base_seed,
         case_base_stratified=True,
-        case_base_ids_path=f"results/multiwoz_casebase_ids_n250_seed{multiwoz_case_base_seed}_strat.json",
+        case_base_ids_path=f"results/multiwoz_casebase_ids_n550_seed{multiwoz_case_base_seed}_strat.json",
         # CBR internal tuning mode (no val/dev usage):
         cbr_mode=True,
         cv_folds=5,
         tune_lambda_on_cv=True,
         cbr_holdout_test_size=50,
-        cbr_holdout_ids_path=f"results/multiwoz_cbr_holdout_total250_test50_seed{multiwoz_case_base_seed}_strat.json",
+        cbr_holdout_ids_path=f"results/multiwoz_cbr_holdout_total550_test50_seed{multiwoz_case_base_seed}_strat.json",
     )
 
     # Toggle this to run a full options sweep instead of a single config.
@@ -1887,10 +1909,10 @@ if __name__ == "__main__":
         run_option_sweep(
             base_cfg=cfg,
             affinity_methods= ["condprob"],  #["embedding_cosine", "condprob", "pmi"],
-            stopping_modes= ["detector"],  #["alpha", "detector", "hybrid"],
-            stopping_detectors= ["NTAD"],  #["NCFD", "CAI", "EMND", "NTAD"],
-            reuse_methods= ["bm","gsa", "nda", "gsa_card", "llm_zero", "llm_fewshot", "llm_rag"],  #["bm","gsa", "nda", "gsa_card", "llm_zero", "llm_fewshot", "llm_rag"],
-            results_path=f"results/sweep_results-multiwoz-all_detectors_condprob_seed{multiwoz_case_base_seed}.csv",
+            stopping_modes= ["alpha"],  #["alpha", "detector", "hybrid"],
+            stopping_detectors= ["NTAD"],  #["NCD", "WNCD", "END", "NTAD"],
+            reuse_methods= ["bm"],  #["bm", "gsa", "nda", "carm", "llm_zero", "llm_fewshot", "llm_rag"],
+            results_path=f"results/sweep_results-multiwoz-all_reuse-condprob-500_cases-seed{multiwoz_case_base_seed}-bm.csv",
             max_workers=2,
             skip_first_runs=SWEEP_SKIP_FIRST_RUNS,
         )

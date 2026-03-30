@@ -1,0 +1,8 @@
+run,reuse,affinity,stopping,detector,node_f1,edge_f1,avg_neighbours_used,int_node_f1,coverage,status,error
+31,gsa_card,condprob,alpha,-,0.2461904761904762,0.02,3.28,0.2454761904761905,1.0,ok,
+32,gsa_card,condprob,detector,NTAD,0.24263492063492062,0.04,3.12,0.2419206349206349,1.0,ok,
+33,gsa_card,condprob,hybrid,NTAD,0.2461904761904762,0.02,3.28,0.2454761904761905,1.0,ok,
+34,gsa_card,pmi,alpha,-,0.14215873015873015,0.045714285714285714,1.0,0.14215873015873015,1.0,ok,
+35,gsa_card,pmi,detector,NTAD,0.23657142857142857,0.02,3.14,0.23585714285714285,1.0,ok,
+30,gsa_card,embedding_cosine,hybrid,NTAD,0.1615728715728716,0.02,2.76,0.1284920634920635,1.0,ok,
+36,gsa_card,pmi,hybrid,NTAD,0.2164444444444444,0.026666666666666665,1.72,0.2164444444444444,1.0,ok,

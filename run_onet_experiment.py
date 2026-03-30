@@ -179,7 +179,7 @@ def run_onet_option_sweep(
 
 
 if __name__ == "__main__":
-    onet_split_seed = 45  # fixed seed for reproducible train/test split of O*NET dataset; separate from case base sampling seed
+    onet_split_seed = 46  # fixed seed for reproducible train/test split of O*NET dataset; separate from case base sampling seed
     onet_case_base_seed = onet_split_seed  # fixed seed for reproducible case base sampling from the training portion of O*NET dataset; separate from train/test split seed
 
     split_cfg = ONetSplitConfig(
@@ -198,12 +198,12 @@ if __name__ == "__main__":
         alpha=0.45,
         affinity_method="condprob",  # "embedding_cosine" | "condprob" | "pmi"
         stopping_mode="detector",  # "alpha" | "detector" | "hybrid"
-        stopping_detector="NTAD",  # "NCFD", "CAI", "EMND", "NTAD"
+        stopping_detector="NTAD",  # "NCD", "WNCD", "END", "NTAD"
         max_pool_actions=80,
         max_pred_actions=20,
         debug_trace=True,
         debug_first_n=3,
-        reuse_method="nda",  # "bm", "gsa", "nda", "gsa_card", "llm_zero", "llm_fewshot", "llm_rag"
+        reuse_method="nda",  # "bm", "gsa", "nda", "carm", "llm_zero", "llm_fewshot", "llm_rag"
         lambda_complexity=0.01,
         prompt_style="onet",
         tune_alpha_on_val=True,
@@ -224,11 +224,11 @@ if __name__ == "__main__":
         run_onet_option_sweep(
             base_cfg=cfg,
             split_cfg=split_cfg,
-            affinity_methods=["condprob"],
-            stopping_modes=["detector"],
+            affinity_methods=["embedding_cosine"],
+            stopping_modes=["alpha"],
             stopping_detectors=["NTAD"],
-            reuse_methods=["bm", "gsa", "nda", "gsa_card", "llm_zero", "llm_fewshot", "llm_rag"],
-            results_path=f"results/sweep_results-onet-all_detectors_condprob_seed{onet_split_seed}.csv",
+            reuse_methods=["bm", "gsa", "nda", "carm"],
+            results_path=f"results/sweep_results-onet-alpha_embedding_cosine_seed{onet_split_seed}.csv",
         )
     else:
         run_single(cfg, split_cfg)

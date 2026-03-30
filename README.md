@@ -9,7 +9,7 @@ At a high level, the pipeline:
 
 1. Builds cases (`problem`, `needs`, `solution`)
 2. Retrieves neighbours from a case base
-3. Reuses/adapts solutions (`bm`, `gsa`, `nda`, `gsa_card`, `llm_zero`, `llm_fewshot`, `llm_rag`)
+3. Reuses/adapts solutions (`bm`, `gsa`, `nda`, `carm`, `llm_zero`, `llm_fewshot`, `llm_rag`)
 4. Applies acceptance/stopping logic (`alpha`, detector-based, or hybrid)
 5. Reports Node-F1 / Edge-F1 and related metrics
 
@@ -117,7 +117,7 @@ Results are written to the CSV set in `results_path`.
 
 Use the same setup across methods, then vary only method and selection configuration:
 
-- `reuse_methods = ["bm", "gsa", "nda", "gsa_card", "llm_zero", "llm_fewshot", "llm_rag"]`
+- `reuse_methods = ["bm", "gsa", "nda", "carm", "llm_zero", "llm_fewshot", "llm_rag"]`
 - `affinity_methods = ["condprob"]`
 - `stopping_modes = ["detector"]`
 - `stopping_detectors = ["NTAD"]`

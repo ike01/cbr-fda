@@ -47,10 +47,10 @@ class FailureDetector:
 
 class NeighbourhoodConsistencyDetector(FailureDetector):
     """
-    NCFD: Score = mean Jaccard(node-set(pred), node-set(neighbour)).
+    NCD: Score = mean Jaccard(node-set(pred), node-set(neighbour)).
     Domain-free and cheap.
     """
-    name = "NCFD"
+    name = "NCD"
 
     def score(self, query, pred_graph, retrieved, case_base) -> float:
         pred = set(pred_graph.node_labels())
@@ -65,10 +65,10 @@ class NeighbourhoodConsistencyDetector(FailureDetector):
 
 class CaseAlignmentIntegrityDetector(FailureDetector):
     """
-    CAI: similarity-weighted overlap with neighbours.
+    WNCD: similarity-weighted overlap with neighbours.
     Uses retrieval scores as weights.
     """
-    name = "CAI"
+    name = "WNCD"
 
     def score(self, query, pred_graph, retrieved, case_base) -> float:
         pred = set(pred_graph.node_labels())
@@ -149,10 +149,10 @@ class _EmbeddingBackbone:
 
 class EmbeddingNoveltyDetector(FailureDetector):
     """
-    EMND: Fit IsolationForest on language-model embeddings of training solution-actions.
+    END: Fit IsolationForest on language-model embeddings of training solution-actions.
     Score = sigmoid(decision_function) in (0,1): higher = less novel (more normal).
     """
-    name = "EMND"
+    name = "END"
 
     def __init__(self, model_name: str = "all-MiniLM-L6-v2", random_state: int = 7):
         self.backbone = _EmbeddingBackbone(model_name=model_name)

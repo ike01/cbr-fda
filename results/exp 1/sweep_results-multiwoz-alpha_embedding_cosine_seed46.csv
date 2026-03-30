@@ -1,0 +1,5 @@
+run,reuse,affinity,stopping,detector,node_f1,edge_f1,avg_neighbours_used,int_node_f1,coverage,status,error
+1,bm,embedding_cosine,alpha,-,0.2732727272727272,0.09644444444444446,1.0,0.2732727272727272,1.0,ok,
+2,gsa,embedding_cosine,alpha,-,0.2785714285714286,0.048,1.68,0.2896060606060606,1.0,ok,
+3,nda,embedding_cosine,alpha,-,0.2785714285714286,0.048,1.68,0.2896060606060606,1.0,ok,
+4,gsa_card,embedding_cosine,alpha,-,0.24354112554112553,0.027999999999999997,2.86,0.2803203463203463,1.0,ok,

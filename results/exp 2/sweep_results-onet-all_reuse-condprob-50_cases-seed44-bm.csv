@@ -1,0 +1,2 @@
+run,reuse,affinity,stopping,detector,node_f1,edge_f1,avg_neighbours_used,int_node_f1,coverage,status,error
+1,bm,condprob,alpha,-,0.5417306582306582,0.2615821955821956,1.0,0.5417306582306582,1.0,ok,

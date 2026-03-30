@@ -1,0 +1,8 @@
+run,reuse,affinity,stopping,detector,node_f1,edge_f1,avg_neighbours_used,int_node_f1,coverage,status,error
+1,bm,condprob,detector,NTAD,0.3517142857142857,0.046714285714285715,1.0,0.3517142857142857,1.0,ok,
+2,gsa,condprob,detector,NTAD,0.32180952380952377,0.04,3.1,0.3284761904761905,1.0,ok,
+3,nda,condprob,detector,NTAD,0.32180952380952377,0.04,3.1,0.3284761904761905,1.0,ok,
+4,gsa_card,condprob,detector,NTAD,0.3386190476190476,0.04371428571428572,3.48,0.3689523809523809,1.0,ok,
+5,llm_zero,condprob,detector,NTAD,0.0,0.0,0.0,0.0,0.0,error,Ollama request failed: HTTP Error 500: Internal Server Error
+6,llm_fewshot,condprob,detector,NTAD,0.0,0.0,0.0,0.0,0.0,error,Ollama request failed: HTTP Error 500: Internal Server Error
+7,llm_rag,condprob,detector,NTAD,0.0,0.0,0.0,0.0,0.0,error,Ollama request failed: HTTP Error 500: Internal Server Error
